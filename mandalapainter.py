@@ -1,8 +1,10 @@
 from tkinter import *
+from tkinter import filedialog
 from PIL import Image, ImageTk, ImageDraw, ImageFilter
 from tkinter.colorchooser import askcolor
 import math
 import numpy as np
+
 
 
 class Paint(object):
@@ -19,17 +21,11 @@ class Paint(object):
         self.blur_button = Button(self.root, text='blur', command=self.toggle_blur)
         self.blur_button.grid(row=0, column=1)
 
-        #self.pen_button = Button(self.root, text='pen', command=self.use_pen)
-        #self.pen_button.grid(row=0, column=0)
-
-        #self.brush_button = Button(self.root, text='brush', command=self.use_brush)
-        #self.brush_button.grid(row=0, column=1)
-
         self.color_button = Button(self.root, text='color', command=self.choose_color)
         self.color_button.grid(row=0, column=2)
 
-        #self.eraser_button = Button(self.root, text='eraser', command=self.use_eraser)
-        #self.eraser_button.grid(row=0, column=3)
+        self.save_button = Button(self.root, text='save', command=self.save_image)
+        self.save_button.grid(row=0, column=3)
 
         self.choose_size_button = Scale(self.root, from_=1, to=10, orient=HORIZONTAL)
         self.choose_size_button.grid(row=0, column=4)
@@ -96,6 +92,15 @@ class Paint(object):
 
     def toggle_blur(self):
         self.blur = not self.blur
+
+    def save_image(self):
+        file = filedialog.asksaveasfile(mode='w', defaultextension=".png")
+        if file is None:
+            return
+        print(file.name)
+        print(type(file.name))
+        self.pilImage.save(file.name)
+
 
     def choose_color(self):
         self.eraser_on = False
