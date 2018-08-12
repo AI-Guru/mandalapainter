@@ -15,29 +15,40 @@ class Paint(object):
     def __init__(self):
         self.root = Tk()
 
-        self.mirror_button = Button(self.root, text='mirror', command=self.toggle_mirror)
-        self.mirror_button.grid(row=0, column=0)
+        column = 0
 
-        self.blur_button = Button(self.root, text='blur', command=self.toggle_blur)
-        self.blur_button.grid(row=0, column=1)
+        self.mirror_button = Button(self.root, text='mirror', command=self.toggle_mirror)
+        self.mirror_button.grid(row=0, column=column)
+        column += 1
 
         self.color_button = Button(self.root, text='color', command=self.choose_color)
-        self.color_button.grid(row=0, column=2)
+        self.color_button.grid(row=0, column=column)
+        column += 1
 
         self.save_button = Button(self.root, text='save', command=self.save_image)
-        self.save_button.grid(row=0, column=3)
+        self.save_button.grid(row=0, column=column)
+        column += 1
 
         self.choose_size_button = Scale(self.root, from_=1, to=10, orient=HORIZONTAL)
-        self.choose_size_button.grid(row=0, column=4)
+        self.choose_size_button.grid(row=0, column=column)
+        column += 1
+
+        self.choose_segments = Scale(self.root, from_=4, to=40, orient=HORIZONTAL)
+        self.choose_segments.set(16)
+        self.choose_segments.grid(row=0, column=column)
+        column += 1
+
+        self.choose_blur = Scale(self.root, from_=0, to=10, orient=HORIZONTAL)
+        self.choose_blur.grid(row=0, column=column)
+        column += 1
 
         self.size = (600, 600)
         self.center = (300, 300)
-        self.segments = 10
+        self.segments = 40
         self.clicked_segment = None
         self.segment_vectors = []
 
         self.mirror = False
-        self.blur = False
 
         # Compute the vectors for the segments.
         #for segment in range(self.segments):
@@ -56,7 +67,7 @@ class Paint(object):
             #self.segment_vectors.append((vector1, vector2))
 
         self.c = Canvas(self.root, bg='red', width=self.size[0], height=self.size[0])
-        self.c.grid(row=1, columnspan=5)
+        self.c.grid(row=1, columnspan=column)
 
         # Create a PIL image.
         self.pilImage = Image.new('RGB', self.size)
@@ -90,15 +101,10 @@ class Paint(object):
     def toggle_mirror(self):
         self.mirror = not self.mirror
 
-    def toggle_blur(self):
-        self.blur = not self.blur
-
     def save_image(self):
         file = filedialog.asksaveasfile(mode='w', defaultextension=".png")
         if file is None:
             return
-        print(file.name)
-        print(type(file.name))
         self.pilImage.save(file.name)
 
 
@@ -129,6 +135,9 @@ class Paint(object):
             #self.render_segments(self.clicked_segment)
 
         self.line_width = self.choose_size_button.get()
+        self.segments = self.choose_segments.get()
+        self.blur_degree = self.choose_blur.get() / 10.0
+
         paint_color = 'white' if self.eraser_on else self.color
         if self.old_x and self.old_y:
             self.draw_line(self.old_x, self.old_y, event.x, event.y)
@@ -166,9 +175,9 @@ class Paint(object):
         del self.imagesprite
         del self.image
 
-        if self.blur == True:
+        if self.blur_degree != 0:
             blurredImage = self.pilImage.filter(ImageFilter.BLUR)
-            self.pilImage = Image.blend(self.pilImage, blurredImage, alpha=.2)
+            self.pilImage = Image.blend(self.pilImage, blurredImage, alpha=self.blur_degree)
 
         draw = ImageDraw.Draw(self.pilImage)
 
