@@ -1,10 +1,9 @@
 from tkinter import *
 from tkinter import filedialog
-from PIL import Image, ImageTk, ImageDraw, ImageFilter
+from PIL import Image, ImageTk, ImageDraw, ImageFilter, ImageChops, ImageEnhance
 from tkinter.colorchooser import askcolor
 import math
 import numpy as np
-
 
 
 class Paint(object):
@@ -14,32 +13,37 @@ class Paint(object):
 
     def __init__(self):
         self.root = Tk()
+        self.root.tk.call('tk', 'scaling', 1.0)
 
         column = 0
 
-        self.mirror_button = Button(self.root, text='mirror', command=self.toggle_mirror)
+        # Adds a button for mirroring.
+        self.mirror_button = Button(self.root, text='Mirror', command=self.toggle_mirror)
         self.mirror_button.grid(row=0, column=column)
+
+        self.color_button = Button(self.root, text='Color', command=self.choose_color)
+        self.color_button.grid(row=1, column=column)
         column += 1
 
-        self.color_button = Button(self.root, text='color', command=self.choose_color)
-        self.color_button.grid(row=0, column=column)
+        self.segments_button = Button(self.root, text='Segments', command=self.draw_segments)
+        self.segments_button.grid(row=0, column=column)
         column += 1
 
-        self.save_button = Button(self.root, text='save', command=self.save_image)
-        self.save_button.grid(row=0, column=column)
-        column += 1
-
-        self.choose_size_button = Scale(self.root, from_=1, to=10, orient=HORIZONTAL)
+        self.choose_size_button = Scale(self.root, from_=1, to=10, orient=HORIZONTAL, label="Pen Size")
         self.choose_size_button.grid(row=0, column=column)
         column += 1
 
-        self.choose_segments = Scale(self.root, from_=4, to=40, orient=HORIZONTAL)
+        self.choose_segments = Scale(self.root, from_=4, to=40, orient=HORIZONTAL, label="Segments")
         self.choose_segments.set(16)
         self.choose_segments.grid(row=0, column=column)
         column += 1
 
-        self.choose_blur = Scale(self.root, from_=0, to=10, orient=HORIZONTAL)
+        self.choose_blur = Scale(self.root, from_=0, to=10, orient=HORIZONTAL, label="Blur degree")
         self.choose_blur.grid(row=0, column=column)
+        column += 1
+
+        self.save_button = Button(self.root, text='save', command=self.save_image)
+        self.save_button.grid(row=0, column=column)
         column += 1
 
         self.size = (600, 600)
@@ -50,24 +54,8 @@ class Paint(object):
 
         self.mirror = False
 
-        # Compute the vectors for the segments.
-        #for segment in range(self.segments):
-
-        #    angle1 = segment * 2.0 * math.pi / self.segments
-        #    vector1 = (math.sin(angle1), math.cos(angle1))
-        #    vector1 = np.array(vector1)
-
-        #    angle2 = (segment + 1) * 2.0 * math.pi / self.segments
-        #    vector2 = (math.sin(angle2), math.cos(angle2))
-        #    vector2 = np.array(vector2)
-
-        #    vector2 = vector_from_angle_and_size()
-
-            #print(vector1, vector2)
-            #self.segment_vectors.append((vector1, vector2))
-
         self.c = Canvas(self.root, bg='red', width=self.size[0], height=self.size[0])
-        self.c.grid(row=1, columnspan=column)
+        self.c.grid(row=2, columnspan=column)
 
         # Create a PIL image.
         self.pilImage = Image.new('RGB', self.size)
@@ -84,22 +72,19 @@ class Paint(object):
         self.old_y = None
         self.line_width = self.choose_size_button.get()
         self.color = "white"
-        self.eraser_on = False
-        #self.active_button = self.pen_button
         self.c.bind('<B1-Motion>', self.paint)
         self.c.bind('<ButtonRelease-1>', self.reset)
 
         self.c.create_oval(self.center[0] - 5, self.center[1] - 5, self.center[0] + 5, self.center[1] + 5, fill="white")
 
 
-    #def use_pen(self):
-    #    self.activate_button(self.pen_button)
-
-    #def use_brush(self):
-    #    self.activate_button(self.brush_button)
-
     def toggle_mirror(self):
         self.mirror = not self.mirror
+
+    def draw_segments(self):
+        for segment in range(self.segments):
+            pass
+
 
     def save_image(self):
         file = filedialog.asksaveasfile(mode='w', defaultextension=".png")
@@ -138,12 +123,21 @@ class Paint(object):
         self.segments = self.choose_segments.get()
         self.blur_degree = self.choose_blur.get() / 10.0
 
-        paint_color = 'white' if self.eraser_on else self.color
-        if self.old_x and self.old_y:
-            self.draw_line(self.old_x, self.old_y, event.x, event.y)
+        brush_offsets = [(-5, 2), (2, 12), (-20, 2), (8, -4), (-4, -6)]
 
-        self.old_x = event.x
-        self.old_y = event.y
+        if self.old_x and self.old_y:
+            distance = get_distance(self.old_x, self.old_y, event.x, event.y)
+            if distance > 1.0:
+                self.draw_line(self.old_x, self.old_y, event.x, event.y)
+
+                #for (x, y) in brush_offsets:
+                #    self.draw_line(x + self.old_x, y + self.old_y, x + event.x, y + event.y)
+
+                self.old_x = event.x
+                self.old_y = event.y
+        else:
+            self.old_x = event.x
+            self.old_y = event.y
 
 
     def render_segments(self, clicked_segment):
@@ -177,7 +171,9 @@ class Paint(object):
 
         if self.blur_degree != 0:
             blurredImage = self.pilImage.filter(ImageFilter.BLUR)
-            self.pilImage = Image.blend(self.pilImage, blurredImage, alpha=self.blur_degree)
+            self.pilImage = Image.blend(self.pilImage, blurredImage, alpha=self.blur_degree / 10.0)
+            #self.pilImage = ImageChops.add(self.pilImage, blurredImage)
+            #self.pilImage = ImageEnhance.Brightness(self.pilImage).enhance(0.9995)
 
         draw = ImageDraw.Draw(self.pilImage)
 
@@ -208,25 +204,22 @@ class Paint(object):
                 x1, y1 = vector_from_angle_and_length(segment_angle + angle1, length1)
                 x2, y2 = vector_from_angle_and_length(segment_angle + angle2, length2)
 
-            # Back with center.
+            # Back with center and draw.
             x1 += self.center[0]
             y1 += self.center[1]
             x2 += self.center[0]
             y2 += self.center[1]
-
             draw.line((x1, y1, x2, y2), fill=self.color, width=self.line_width)
 
-            ## Draw.
-            #self.c.create_line(
-            #    x1, y1, x2, y2,
-            #    width=self.line_width, fill=self.color,
-            #                   capstyle=ROUND, smooth=TRUE, splinesteps=36)
+            # Draw a line.
+            cap_size = self.line_width // 2
+            draw.ellipse ((x1 - cap_size, y1 - cap_size, x1 + cap_size, y1 + cap_size), fill=self.color)
+            draw.ellipse ((x2 - cap_size, y2 - cap_size, x2 + cap_size, y2 + cap_size), fill=self.color)
 
         del draw
 
         self.image = ImageTk.PhotoImage(self.pilImage)
         self.imagesprite = self.c.create_image(self.center[0], self.center[1], image=self.image)
-
 
 
     def reset(self, event):
@@ -246,6 +239,10 @@ def polar_coordinates(x, y):
         angle += 2.0 * math.pi
     length = math.sqrt(x**2 + y**2)
     return angle, length
+
+
+def get_distance(x1, y1, x2, y2):
+    return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
 
 if __name__ == '__main__':
