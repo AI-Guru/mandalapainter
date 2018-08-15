@@ -214,8 +214,10 @@ class Paint(object):
         del self.imagesprite
         del self.image
 
+
+
         overall_image = Image.new('L', size=self.size, color="black")
-        image = self.brush_image.resize((20, 20), Image.ANTIALIAS)
+        image = self.brush_image.resize((2 * self.line_width, 2 * self.line_width), Image.ANTIALIAS)
         image = ImageOps.grayscale(image)
 
         points = self.get_mandala_points(x, y)
@@ -223,7 +225,7 @@ class Paint(object):
             x = int(x)
             y = int(y)
             big_image = Image.new('L', size=self.size, color="black")
-            big_image.paste(image, (x - 10, y - 10))
+            big_image.paste(image, (x - self.line_width, y - self.line_width))
             big_image = ImageOps.grayscale(big_image)
             overall_image = ImageChops.add(big_image, overall_image, 1)
             overall_image = ImageOps.grayscale(overall_image)
