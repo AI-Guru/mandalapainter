@@ -1,6 +1,6 @@
 from tkinter import *
 from tkinter import filedialog
-from PIL import Image, ImageTk, ImageDraw, ImageFilter, ImageChops, ImageEnhance, ImageColor
+from PIL import Image, ImageTk, ImageDraw, ImageFilter, ImageChops, ImageEnhance, ImageColor, ImageOps
 from tkinter.colorchooser import askcolor
 import math
 import numpy as np
@@ -8,8 +8,6 @@ import numpy as np
 
 class Paint(object):
 
-    DEFAULT_PEN_SIZE = 5.0
-    DEFAULT_COLOR = 'black'
 
     def __init__(self):
         self.root = Tk()
@@ -27,8 +25,10 @@ class Paint(object):
 
         self.draw_button = Button(self.root, text='Draw', command=self.enable_draw)
         self.draw_button.grid(row=0, column=column)
+        self.brush_button = Button(self.root, text='Brush', command=self.enable_brush)
+        self.brush_button.grid(row=1, column=column)
         self.fill_button = Button(self.root, text='Fill', command=self.enable_fill)
-        self.fill_button.grid(row=1, column=column)
+        self.fill_button.grid(row=2, column=column)
         column += 1
 
         self.choose_size_button = Scale(self.root, from_=1, to=10, orient=HORIZONTAL, label="Pen Size")
@@ -50,20 +50,20 @@ class Paint(object):
 
         self.size = (600, 600)
         self.center = (300, 300)
-        self.segments = 40
         self.clicked_segment = None
-        self.segment_vectors = []
-
         self.mirror = False
         self.mode = "draw"
 
         self.c = Canvas(self.root, bg='red', width=self.size[0], height=self.size[0])
-        self.c.grid(row=2, columnspan=column)
+        self.c.grid(row=3, columnspan=column)
 
         # Create a PIL image.
         self.pilImage = Image.new('RGB', self.size)
         self.image = ImageTk.PhotoImage(self.pilImage)
         self.imagesprite = self.c.create_image(self.center[0], self.center[1], image=self.image)
+
+        # Load the brush.
+        self.brush_image = Image.open("resources/brush.png", "r")
 
         self.setup()
 
@@ -87,6 +87,10 @@ class Paint(object):
 
     def enable_draw(self):
         self.mode = "draw"
+
+
+    def enable_brush(self):
+        self.mode = "brush"
 
 
     def enable_fill(self):
@@ -123,6 +127,10 @@ class Paint(object):
 
     def paint(self, event):
 
+        self.line_width = self.choose_size_button.get()
+        self.segments = self.choose_segments.get()
+        self.blur_degree = self.choose_blur.get() / 10.0
+
         if self.clicked_segment == None:
             vec_x = event.x - self.center[0]
             vec_y = event.y - self.center[1]
@@ -134,26 +142,25 @@ class Paint(object):
             # For debugging.
             #self.render_segments(self.clicked_segment)
 
-        if self.mode == "draw":
-            self.line_width = self.choose_size_button.get()
-            self.segments = self.choose_segments.get()
-            self.blur_degree = self.choose_blur.get() / 10.0
 
-            brush_offsets = [(-5, 2), (2, 12), (-20, 2), (8, -4), (-4, -6)]
-
-            if self.old_x and self.old_y:
+        if self.old_x and self.old_y:
+            if self.mode == "draw":
                 distance = get_distance(self.old_x, self.old_y, event.x, event.y)
                 if distance > 1.0:
                     self.draw_line(self.old_x, self.old_y, event.x, event.y)
 
-                    #for (x, y) in brush_offsets:
-                    #    self.draw_line(x + self.old_x, y + self.old_y, x + event.x, y + event.y)
+                    self.old_x = event.x
+                    self.old_y = event.y
+            elif self.mode == "brush":
+                distance = get_distance(self.old_x, self.old_y, event.x, event.y)
+                if distance > 1.0:
+                    self.draw_brush(event.x, event.y)
 
                     self.old_x = event.x
                     self.old_y = event.y
-            else:
-                self.old_x = event.x
-                self.old_y = event.y
+        else:
+            self.old_x = event.x
+            self.old_y = event.y
 
 
     def render_segments(self, clicked_segment):
@@ -188,51 +195,41 @@ class Paint(object):
         if self.blur_degree != 0:
             blurredImage = self.pilImage.filter(ImageFilter.BLUR)
             self.pilImage = Image.blend(self.pilImage, blurredImage, alpha=self.blur_degree / 10.0)
-            #self.pilImage = ImageChops.add(self.pilImage, blurredImage)
-            #self.pilImage = ImageEnhance.Brightness(self.pilImage).enhance(0.9995)
 
+        # Compute and draw the lines.
         draw = ImageDraw.Draw(self.pilImage)
-
-        # Center the vectors.
-        x1 -= self.center[0]
-        y1 -= self.center[1]
-        x2 -= self.center[0]
-        y2 -= self.center[1]
-
-        # Compute polar coordinates of vectors.
-        angle1, length1 = polar_coordinates(x1, y1)
-        angle2, length2 = polar_coordinates(x2, y2)
-
-        # BLA
-        clicked_segment_angle = 2.0 * math.pi * self.clicked_segment / self.segments
-
-        angle1 -= clicked_segment_angle
-        angle2 -= clicked_segment_angle
-        for segment in range(self.segments):
-
-            if self.mirror == True and segment % 2 != self.clicked_segment % 2:
-                segment_angle = 2.0 * math.pi * (segment + 1) / self.segments
-                x1, y1 = vector_from_angle_and_length(segment_angle - angle1, length1)
-                x2, y2 = vector_from_angle_and_length(segment_angle - angle2, length2)
-
-            else:
-                segment_angle = 2.0 * math.pi * segment / self.segments
-                x1, y1 = vector_from_angle_and_length(segment_angle + angle1, length1)
-                x2, y2 = vector_from_angle_and_length(segment_angle + angle2, length2)
-
-            # Back with center and draw.
-            x1 += self.center[0]
-            y1 += self.center[1]
-            x2 += self.center[0]
-            y2 += self.center[1]
+        start_points = self.get_mandala_points(x1, y1)
+        end_points = self.get_mandala_points(x2, y2)
+        for (x1, y1), (x2, y2) in zip(start_points, end_points):
             draw.line((x1, y1, x2, y2), fill=self.color, width=self.line_width)
 
-            # Draw a line.
-            cap_size = self.line_width // 2
-            draw.ellipse ((x1 - cap_size, y1 - cap_size, x1 + cap_size, y1 + cap_size), fill=self.color)
-            draw.ellipse ((x2 - cap_size, y2 - cap_size, x2 + cap_size, y2 + cap_size), fill=self.color)
-
         del draw
+
+        self.image = ImageTk.PhotoImage(self.pilImage)
+        self.imagesprite = self.c.create_image(self.center[0], self.center[1], image=self.image)
+
+
+    def draw_brush(self, x, y):
+
+        del self.imagesprite
+        del self.image
+
+        overall_image = Image.new('L', size=self.size, color="black")
+        image = self.brush_image.resize((20, 20), Image.ANTIALIAS)
+        image = ImageOps.grayscale(image)
+
+        points = self.get_mandala_points(x, y)
+        for (x, y) in points:
+            x = int(x)
+            y = int(y)
+            big_image = Image.new('L', size=self.size, color="black")
+            big_image.paste(image, (x - 10, y - 10))
+            big_image = ImageOps.grayscale(big_image)
+            overall_image = ImageChops.add(big_image, overall_image, 1)
+            overall_image = ImageOps.grayscale(overall_image)
+
+        overall_image = ImageOps.colorize(overall_image, "black", self.color)
+        self.pilImage = ImageChops.add(self.pilImage, overall_image, 1)
 
         self.image = ImageTk.PhotoImage(self.pilImage)
         self.imagesprite = self.c.create_image(self.center[0], self.center[1], image=self.image)
@@ -252,6 +249,37 @@ class Paint(object):
         self.image = ImageTk.PhotoImage(self.pilImage)
         self.imagesprite = self.c.create_image(self.center[0], self.center[1], image=self.image)
 
+    def get_mandala_points(self, x, y):
+        x, y = self.center_point(x, y)
+        angle, length = polar_coordinates(x, y)
+
+        clicked_segment_angle = 2.0 * math.pi * self.clicked_segment / self.segments
+
+        angle -= clicked_segment_angle
+
+        points = []
+        for segment in range(self.segments):
+
+            if self.mirror == True and segment % 2 != self.clicked_segment % 2:
+                segment_angle = 2.0 * math.pi * (segment + 1) / self.segments
+                x, y = vector_from_angle_and_length(segment_angle - angle, length)
+
+            else:
+                segment_angle = 2.0 * math.pi * segment / self.segments
+                x, y = vector_from_angle_and_length(segment_angle + angle, length)
+
+            x, y = self.recenter_point(x, y)
+            points.append((x, y))
+
+        return points
+
+
+    def center_point(self, x, y):
+        return x - self.center[0], y - self.center[1]
+
+
+    def recenter_point(self, x, y):
+        return x + self.center[0], y + self.center[1]
 
 
 def vector_from_angle_and_length(angle, length):
