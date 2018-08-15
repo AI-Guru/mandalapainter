@@ -214,24 +214,16 @@ class Paint(object):
         del self.imagesprite
         del self.image
 
-
-
-        overall_image = Image.new('L', size=self.size, color="black")
+        color_image = Image.new("RGBA", size=(2 * self.line_width, 2 * self.line_width), color=self.color)
         image = self.brush_image.resize((2 * self.line_width, 2 * self.line_width), Image.ANTIALIAS)
-        image = ImageOps.grayscale(image)
+        image = ImageChops.multiply(image, color_image)
 
+        overall_image = Image.new("RGBA", size=self.size, color="black")
         points = self.get_mandala_points(x, y)
         for (x, y) in points:
             x = int(x)
             y = int(y)
-            big_image = Image.new('L', size=self.size, color="black")
-            big_image.paste(image, (x - self.line_width, y - self.line_width))
-            big_image = ImageOps.grayscale(big_image)
-            overall_image = ImageChops.add(big_image, overall_image, 1)
-            overall_image = ImageOps.grayscale(overall_image)
-
-        overall_image = ImageOps.colorize(overall_image, "black", self.color)
-        self.pilImage = ImageChops.add(self.pilImage, overall_image, 1)
+            self.pilImage.paste(image, (x - self.line_width, y - self.line_width), image)
 
         self.image = ImageTk.PhotoImage(self.pilImage)
         self.imagesprite = self.c.create_image(self.center[0], self.center[1], image=self.image)
