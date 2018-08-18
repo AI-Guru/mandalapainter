@@ -263,8 +263,6 @@ class Paint(object):
 
 
     def refresh(self):
-        ## TODO necesssary? maybe update helps?
-
         del self.imagesprite
         del self.image
         self.image = ImageTk.PhotoImage(self.pilImage)
