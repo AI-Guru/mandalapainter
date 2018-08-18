@@ -4,6 +4,7 @@ from PIL import Image, ImageTk, ImageDraw, ImageFilter, ImageChops, ImageEnhance
 from tkinter.colorchooser import askcolor
 import math
 import numpy as np
+from matplotlib import cm
 
 
 class Paint(object):
@@ -40,16 +41,20 @@ class Paint(object):
         self.choose_segments.grid(row=0, column=column)
         column += 1
 
-        self.choose_blur = Scale(self.root, from_=0, to=10, orient=HORIZONTAL, label="Blur degree")
+        self.choose_blur = Scale(self.root, from_=0, to=10, orient=HORIZONTAL, label="Blur")
         self.choose_blur.grid(row=0, column=column)
+        column += 1
+
+        self.choose_shrink = Scale(self.root, from_=0, to=10, orient=HORIZONTAL, label="Shrink")
+        self.choose_shrink.grid(row=0, column=column)
         column += 1
 
         self.save_button = Button(self.root, text='save', command=self.save_image)
         self.save_button.grid(row=0, column=column)
         column += 1
 
-        self.size = (600, 600)
-        self.center = (300, 300)
+        self.size = (700, 700)
+        self.center = (self.size[0] // 2, self.size[1] // 2)
         self.clicked_segment = None
         self.mirror = False
         self.mode = "draw"
@@ -67,7 +72,14 @@ class Paint(object):
 
         self.setup()
 
+        # Dev. TODO remove
+        self.mode = "brush"
+        self.choose_size_button.set(10)
+        self.choose_shrink.set(10)
+
+        # Run!
         self.root.mainloop()
+
 
 
     def setup(self):
@@ -129,9 +141,14 @@ class Paint(object):
 
         self.line_width = self.choose_size_button.get()
         self.segments = self.choose_segments.get()
-        self.blur_degree = self.choose_blur.get() / 10.0
+        self.blur = self.choose_blur.get() / 10.0
+        self.shrink = self.choose_shrink.get()
 
-        if self.clicked_segment == None:
+        # Start.
+        if not (self.old_x and self.old_y and self.clicked_segment):
+            self.old_x = event.x
+            self.old_y = event.y
+            self.distance = 0.0
             vec_x = event.x - self.center[0]
             vec_y = event.y - self.center[1]
             angle = math.atan2(vec_y, vec_x)
@@ -139,11 +156,8 @@ class Paint(object):
                 angle += 2.0 * math.pi
             self.clicked_segment = int(angle * self.segments / (2.0 * math.pi))
 
-            # For debugging.
-            #self.render_segments(self.clicked_segment)
-
-
-        if self.old_x and self.old_y:
+        # Continue.
+        else:
             if self.mode == "draw":
                 distance = get_distance(self.old_x, self.old_y, event.x, event.y)
                 if distance > 1.0:
@@ -151,6 +165,7 @@ class Paint(object):
 
                     self.old_x = event.x
                     self.old_y = event.y
+                    self.distance += distance
             elif self.mode == "brush":
                 distance = get_distance(self.old_x, self.old_y, event.x, event.y)
                 if distance > 1.0:
@@ -158,9 +173,7 @@ class Paint(object):
 
                     self.old_x = event.x
                     self.old_y = event.y
-        else:
-            self.old_x = event.x
-            self.old_y = event.y
+                    self.distance += distance
 
 
     def render_segments(self, clicked_segment):
@@ -189,12 +202,9 @@ class Paint(object):
 
     def draw_line(self, x1, y1, x2, y2):
 
-        del self.imagesprite
-        del self.image
-
-        if self.blur_degree != 0:
+        if self.blur != 0:
             blurredImage = self.pilImage.filter(ImageFilter.BLUR)
-            self.pilImage = Image.blend(self.pilImage, blurredImage, alpha=self.blur_degree / 10.0)
+            self.pilImage = Image.blend(self.pilImage, blurredImage, alpha=self.blur / 10.0)
 
         # Compute and draw the lines.
         draw = ImageDraw.Draw(self.pilImage)
@@ -202,20 +212,32 @@ class Paint(object):
         end_points = self.get_mandala_points(x2, y2)
         for (x1, y1), (x2, y2) in zip(start_points, end_points):
             draw.line((x1, y1, x2, y2), fill=self.color, width=self.line_width)
-
         del draw
 
-        self.image = ImageTk.PhotoImage(self.pilImage)
-        self.imagesprite = self.c.create_image(self.center[0], self.center[1], image=self.image)
-
+        self.refresh()
 
     def draw_brush(self, x, y):
 
-        del self.imagesprite
-        del self.image
+        width = self.line_width
+        color = self.color
 
-        color_image = Image.new("RGBA", size=(2 * self.line_width, 2 * self.line_width), color=self.color)
-        image = self.brush_image.resize((2 * self.line_width, 2 * self.line_width), Image.ANTIALIAS)
+        if self.shrink != 0:
+
+            interpolation_factor = ((self.shrink - 1) / 9.0)
+            value = 50.0 * interpolation_factor + 500.0 * (1.0 - interpolation_factor)
+            width *= (value - self.distance) / value
+            width = max(0, int(width))
+            color_index = 255 * (value - self.distance) / value
+            color_index = 255 - max(0, int(color_index))
+            color = cm.inferno(color_index)
+            color = (int(color[0] * 255), int(color[1] * 255), int(color[2] * 255))
+
+
+        if width == 0:
+            return
+
+        color_image = Image.new("RGBA", size=(2 * width, 2 * width), color=color)
+        image = self.brush_image.resize((2 * width, 2 * width), Image.ANTIALIAS)
         image = ImageChops.multiply(image, color_image)
 
         overall_image = Image.new("RGBA", size=self.size, color="black")
@@ -223,25 +245,31 @@ class Paint(object):
         for (x, y) in points:
             x = int(x)
             y = int(y)
-            self.pilImage.paste(image, (x - self.line_width, y - self.line_width), image)
+            self.pilImage.paste(image, (x - width, y - width), image)
 
-        self.image = ImageTk.PhotoImage(self.pilImage)
-        self.imagesprite = self.c.create_image(self.center[0], self.center[1], image=self.image)
+        self.refresh()
 
 
     def reset(self, event):
-        del self.imagesprite
-        del self.image
 
-        if self.mode == "draw":
+        if self.mode == "draw" or self.mode == "brush":
             self.old_x, self.old_y = None, None
             self.clicked_segment = None
 
         elif self.mode == "fill":
             ImageDraw.floodfill(self.pilImage, xy=(event.x, event.y), value=ImageColor.getrgb(self.color))
 
+        self.refresh()
+
+
+    def refresh(self):
+        ## TODO necesssary? maybe update helps?
+
+        del self.imagesprite
+        del self.image
         self.image = ImageTk.PhotoImage(self.pilImage)
         self.imagesprite = self.c.create_image(self.center[0], self.center[1], image=self.image)
+
 
     def get_mandala_points(self, x, y):
         x, y = self.center_point(x, y)
