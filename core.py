@@ -97,24 +97,30 @@ class AbstractToolModelview:
 
     def enable_size(self):
 
-        self.size_spinbox = tk.Spinbox(self.toplevel, width=3, from_=1, to=100, command=self.size_spinbox_changed)
+        size_start_value = 1
+        size_end_value = 100
+
+        def size_var_changed(*args):
+            value = self.size_var.get()
+            if value >= size_start_value and value <= size_end_value:
+                self.size = int(value)
+            else:
+                self.size_var.set(10)
+
+        self.size_var = tk.IntVar()
+        self.size_var.set(10)
+        self.size_var.trace("w", size_var_changed)
+        self.size_spinbox = tk.Spinbox(self.toplevel, width=3, textvariable=self.size_var, from_=size_start_value, to=size_end_value)
         self.size_spinbox.grid(row=self.row, column=0)
         self.row += 1
-        self.size_spinbox_changed()
 
 
     def set_size(self, size):
-        self.size_spinbox.delete(0,"end")
-        self.size_spinbox.insert(0, size)
-        self.size = size
+        self.size_var.set(10)
 
 
     def color_button_clicked(self):
         self.color = askcolor(color=self.color)[1]
-
-
-    def size_spinbox_changed(self):
-        self.size = int(self.size_spinbox.get())
 
 
     def show(self):
