@@ -25,8 +25,10 @@ class ToolsWindow:
         self.fill_button.grid(row=row, column=0)
         row += 1
 
+        # Activate a tool.
         self.active_button = None
         self.click_draw_button()
+        #self.click_brush_button()
 
 
     def click_draw_button(self):

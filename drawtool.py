@@ -1,6 +1,8 @@
+import tkinter as tk
 from PIL import ImageDraw
+
 from core import AbstractToolProcessor
-from core import AbstractToolModel
+from core import AbstractToolModelview
 
 class DrawProcessor(AbstractToolProcessor):
 
@@ -24,5 +26,20 @@ class DrawProcessor(AbstractToolProcessor):
         start_points = self.get_mandala_points(x1, y1)
         end_points = self.get_mandala_points(x2, y2)
         for (x1, y1), (x2, y2) in zip(start_points, end_points):
-            draw.line((x1, y1, x2, y2), fill=self.main_window.color, width=self.main_window.line_width)
+            draw.line((x1, y1, x2, y2), fill=self.modelview.color, width=self.modelview.size)
         del draw
+
+
+class DrawModelview(AbstractToolModelview):
+
+    def __init__(self, main_window):
+        super(DrawModelview, self).__init__(main_window)
+
+        self.enable_color()
+        self.enable_size()
+
+        self.toplevel.overrideredirect(True)
+        self.toplevel.wm_title("Draw")
+        self.toplevel.geometry("75x150+800+200")
+        self.toplevel.resizable(width=False, height=False)
+        self.toplevel.update()

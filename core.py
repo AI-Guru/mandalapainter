@@ -1,5 +1,8 @@
+import tkinter as tk
+from tkinter.colorchooser import askcolor
 import math
 import numpy as np
+
 
 class AbstractToolProcessor:
 
@@ -31,7 +34,7 @@ class AbstractToolProcessor:
     def move(self, x, y):
         self.moved_distance_in_step = get_distance(self.old_x, self.old_y, x, y)
         self.overall_moved_distance += self.moved_distance_in_step
-        pass
+
 
     def stop(self, x, y):
         self.old_x = None
@@ -75,11 +78,51 @@ class AbstractToolProcessor:
 
 
 
-class AbstractToolModel:
+class AbstractToolModelview:
 
-    def __init__(self):
-        pass
+    def __init__(self, main_window):
 
+        self.main_window = main_window
+        self.toplevel = tk.Toplevel(self.main_window)
+
+        self.row = 0
+
+    def enable_color(self):
+
+        self.color_button = tk.Button(self.toplevel, text='Color', command=self.color_button_clicked)
+        self.color_button.grid(row=self.row, column=0)
+        self.row += 1
+        self.color = "white"
+
+
+    def enable_size(self):
+
+        self.size_spinbox = tk.Spinbox(self.toplevel, width=3, from_=1, to=100, command=self.size_spinbox_changed)
+        self.size_spinbox.grid(row=self.row, column=0)
+        self.row += 1
+        self.size_spinbox_changed()
+
+
+    def set_size(self, size):
+        self.size_spinbox.delete(0,"end")
+        self.size_spinbox.insert(0, 30)
+        self.size = size
+
+
+    def color_button_clicked(self):
+        self.color = askcolor(color=self.color)[1]
+
+
+    def size_spinbox_changed(self):
+        self.size = int(self.size_spinbox.get())
+
+
+    def show(self):
+        self.toplevel.deiconify()
+
+
+    def hide(self):
+        self.toplevel.withdraw()
 
 
 
