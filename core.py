@@ -1,7 +1,5 @@
 import math
-from PIL import ImageDraw
 import numpy as np
-
 
 class AbstractToolProcessor:
 
@@ -33,11 +31,9 @@ class AbstractToolProcessor:
     def move(self, x, y):
         self.moved_distance_in_step = get_distance(self.old_x, self.old_y, x, y)
         self.overall_moved_distance += self.moved_distance_in_step
-        #print("Implement move", x, y)
         pass
 
     def stop(self, x, y):
-        print(self.overall_moved_distance)
         self.old_x = None
         self.old_y = None
         self.clicked_segment = None
@@ -78,42 +74,13 @@ class AbstractToolProcessor:
         return x + self.main_window.center_x, y + self.main_window.center_y
 
 
-class DrawProcessor(AbstractToolProcessor):
 
-    def move(self, x, y):
-        super(DrawProcessor, self).move(x, y)
+class AbstractToolModel:
 
-        self.draw_line(self.old_x, self.old_y, x, y)
-        self.main_window.refresh()
-
-        self.old_x = x
-        self.old_y = y
-
-    def draw_line(self, x1, y1, x2, y2):
-
-        #if self.blur != 0:
-        #    blurredImage = self.pilImage.filter(ImageFilter.BLUR)
-        #    self.pilImage = Image.blend(self.pilImage, blurredImage, alpha=self.blur / 10.0)
-
-        # Compute and draw the lines.
-        draw = ImageDraw.Draw(self.main_window.pil_image)
-        start_points = self.get_mandala_points(x1, y1)
-        end_points = self.get_mandala_points(x2, y2)
-        for (x1, y1), (x2, y2) in zip(start_points, end_points):
-            draw.line((x1, y1, x2, y2), fill=self.main_window.color, width=self.main_window.line_width)
-        del draw
-
-
-
-class BrushProcessor(AbstractToolProcessor):
-
-    def dummy(self):
+    def __init__(self):
         pass
 
-class FillProcessor(AbstractToolProcessor):
 
-    def dummy(self):
-        pass
 
 
 def vector_from_angle_and_length(angle, length):

@@ -1,8 +1,11 @@
 import tkinter as tk
-from toolswindow import *
-from toolprocessors import *
 from tkinter.colorchooser import askcolor
 from PIL import Image, ImageTk, ImageDraw, ImageFilter, ImageChops, ImageEnhance, ImageColor, ImageOps
+
+from toolswindow import *
+from drawtool import *
+from brushtool import *
+from filltool import *
 
 class MainWindow(tk.Frame):
 
