@@ -105,7 +105,7 @@ class AbstractToolModelview:
 
     def set_size(self, size):
         self.size_spinbox.delete(0,"end")
-        self.size_spinbox.insert(0, 30)
+        self.size_spinbox.insert(0, size)
         self.size = size
 
 

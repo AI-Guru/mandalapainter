@@ -27,6 +27,8 @@ class BrushProcessor(AbstractToolProcessor):
     def move(self, x, y):
         super(BrushProcessor, self).move(x, y)
 
+        print(self.modelview.size)
+
         self.old_x = x
         self.old_y = y
 
