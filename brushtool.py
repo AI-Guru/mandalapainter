@@ -22,6 +22,8 @@ class BrushProcessor(AbstractToolProcessor):
         self.colormap_lookup["Magma R"] = cm.magma_r
         self.colormap_lookup["Viridis"] = cm.viridis
         self.colormap_lookup["Viridis R"] = cm.viridis_r
+        self.colormap_lookup["Prism"] = cm.prism
+        self.colormap_lookup["RdYlBu"] = cm.RdYlBu
 
 
     def move(self, x, y):
@@ -90,7 +92,7 @@ class BrushModelview(AbstractToolModelview):
         self.toplevel.update()
 
         # Color modes.
-        modes = ["Color", "Plasma", "Plasma R", "Inferno", "Inferno R", "Magma", "Magma R", "Viridis", "Viridis R"]
+        modes = ["Color", "Plasma", "Plasma R", "Inferno", "Inferno R", "Magma", "Magma R", "Viridis", "Viridis R", "Prism", "RdYlBu"]
         modes_variable = tk.StringVar(self.toplevel)
         modes_variable.set(modes[0])
         self.mode_option_menu = tk.OptionMenu(self.toplevel, modes_variable, *modes, command=self.mode_option_menu_changed)
